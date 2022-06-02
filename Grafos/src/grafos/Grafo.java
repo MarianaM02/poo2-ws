@@ -6,6 +6,6 @@ public interface Grafo<T> {
 	boolean bfs(Nodo<T> inicio);
 	void dijkstra(Nodo<T> inicio);
 	void kruskal();
-	void prim();
+	void eagerPrim();
 	
 }

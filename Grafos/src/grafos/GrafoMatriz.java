@@ -50,7 +50,7 @@ public class GrafoMatriz<T> implements Grafo<T> {
 	}
 
 	@Override
-	public void prim() {
+	public void eagerPrim() {
 		// TODO Auto-generated method stub
 		
 	}

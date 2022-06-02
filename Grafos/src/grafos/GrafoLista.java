@@ -2,12 +2,16 @@ package grafos;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 import pilas_colas.ArrayStack;
@@ -30,7 +34,7 @@ public class GrafoLista<T> implements Grafo<T> {
 
 	public void agregarNodo(Nodo<T> nodo) {
 		if (!this.nodos.contains(nodo)) {
-			this.nodos.add(nodo);			
+			this.nodos.add(nodo);
 		}
 	}
 
@@ -44,6 +48,7 @@ public class GrafoLista<T> implements Grafo<T> {
 			destino.agregarArista(arista);
 		}
 	}
+
 	public void agregarArista(Nodo<T> origen, Nodo<T> destino) {
 		agregarArista(origen, destino, 1);
 	}
@@ -65,7 +70,7 @@ public class GrafoLista<T> implements Grafo<T> {
 		return visitados.containsAll(this.nodos);
 	}
 
-	// TODO Arreglar DFS recursivo 
+	// TODO Arreglar DFS recursivo
 	public boolean dfsRecursivo(Nodo<T> inicial, Set<Nodo<T>> visitados) {
 		for (Arista<T> a : inicial.getAristas()) {
 			Nodo<T> nodoAdyacente = a.getDestino();
@@ -119,52 +124,103 @@ public class GrafoLista<T> implements Grafo<T> {
 		Integer nuevaDistancia = actual.getDistancia() + peso;
 		if (nuevaDistancia < adyacente.getDistancia()) {
 			adyacente.setDistancia(nuevaDistancia);
-			adyacente.setCaminoMasCorto(
-					Stream.concat(actual.getCaminoMasCorto().stream(), Stream.of(actual))
-					.toList());
+			adyacente.setCaminoMasCorto(Stream.concat(actual.getCaminoMasCorto().stream(), Stream.of(actual)).toList());
 		}
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	@Override
 	public void kruskal() {
-		// TODO kruskal
-		if (!dirigido) {
-			UnionFind unionFind = new UnionFind(nodos.size());
-			Set<Arista<T>> arm = new LinkedHashSet<>();
-			Queue<Arista<T>> cola = new PriorityQueue<>();
-			Arista<T> actual;
-			Nodo<T> nodo1;
-			Nodo<T> nodo2;
-			
-			for (Nodo<T> n : this.nodos) {
-				cola.addAll(n.getAristas());
-			}
-			
-			while (!cola.isEmpty()) {
-				actual = cola.poll();
-				nodo1 = actual.getOrigen();
-				nodo2 = actual.getDestino();
-				//fijarse que no sea la arista inversa
-				if(!arm.contains(actual) ||	!arm.contains(actual.aristaInversa())) {
-					// revisar que no haga un ciclo
-					if(unionFind.connected(nodos.indexOf(nodo1), nodos.indexOf(nodo2))) {
-						
-						
-					}
+		// TODO Throws no se aplica y no conexo
+		if (dirigido || nodos.isEmpty()) {
+			return;
+		}
+		int pesoMST = 0;
+		UnionFind unionFind = new UnionFind(nodos.size());
+		// Minimum Spanning Tree / Arbol Recubridor Minimo
+		Set<Arista<T>> mst = new LinkedHashSet<>();
+		Queue<Arista<T>> cola = new PriorityQueue<>();
+		Arista<T> actual;
+		int indexNodo1, indexNodo2;
+
+		for (Nodo<T> n : this.nodos) {
+			cola.addAll(n.getAristas());
+		}
+
+		while (unionFind.components() != 1 || !cola.isEmpty()) {
+			actual = cola.poll();
+			// fijarse que no sea la arista inversa
+			if (!(mst.contains(actual) || mst.contains(actual.aristaInversa()))) {
+				indexNodo1 = nodos.indexOf(actual.getOrigen());
+				indexNodo2 = nodos.indexOf(actual.getDestino());
+				// revisar que no haga un ciclo
+				if (!unionFind.connected(indexNodo1, indexNodo2)) {
+					mst.add(actual);
+					pesoMST += actual.getPeso();
+					unionFind.unify(indexNodo1, indexNodo2);
 				}
 			}
-			arm.forEach(a -> System.out.println(a));
 		}
+		if (unionFind.components() != 1)
+			return;
+
+		mst.forEach(a -> {
+			System.out.println(a);
+		});
+		System.out.println("Peso = " + pesoMST);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	@Override
-	public void prim() {
-		// TODO prim
+	public void eagerPrim() {
+		// TODO prim falta !!
+		if (dirigido || nodos.isEmpty()) {
+			return;
+		}
+		// cantidad total de vertices en el grafo
+		int n = nodos.size();
+		// cantidad total de aristas en MST
+		int m = n - 1;
+		// costo del MST
+		int pesoTotal = 0;
+		boolean[] visitados = new boolean[n];
+		// Minimum Spanning Tree / Arbol Recubridor Minimo
+		Map<Nodo<T>, Arista<T>> mst = new Hashtable<>();
+		Queue<Arista<T>> cola = new PriorityQueue<>();
+
+		int indexNodo = 0;
+		
+		Nodo<T> nodo = nodos.get(indexNodo);
+		
+
+		while (m != mst.size() || !cola.isEmpty()) {
+			for (Arista<T> a : nodo.getAristas()) {
+				if (!mst.containsKey(a.getDestino())) {
+					cola.offer(a);
+				}
+			}
+
+			Arista<T> actual = cola.poll();
+			if (actual != null) {
+				indexNodo = nodos.indexOf(actual.getDestino());
+				if (!visitados[indexNodo]) {
+					final int peso = actual.getPeso();
+					pesoTotal += peso;
+					mst.computeIfPresent(nodo, (key, val) -> val = Integer.compare(peso, val.getPeso()) < 1 ? val : actual);
+					visitados[indexNodo] = true;
+					nodo = actual.getDestino();
+					indexNodo = nodos.indexOf(nodo);
+				}
+			}
+		}
+
+		if (m != mst.size())
+			return;
+		mst.forEach((key, val) -> System.out.println(val));
+		System.out.println("Peso = " + pesoTotal);
 
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////
 
 }
